@@ -1,0 +1,35 @@
+
+# Check for Large Transactions (Long event sequences)
+	mysqlbinlog master.004076 | grep -B1 "COMMIT"
+
+
+# Extract All Row Events (Row-based replication)
+	mysqlbinlog --base64-output=DECODE-ROWS --verbose master.004076 | grep -A5 "###"
+
+
+# Filter Find DDL Operations:
+	mysqlbinlog master.004039 | grep -iE "CREATE|ALTER|DROP"
+
+
+# Find High Exec Time Queries:
+	$mysqlbinlog --base64-output=DECODE-ROWS --verbose master.004039 | grep -o "exec_time=[0-9]*" | awk -F'=' '{count[$2]++} END {for (time in count) print count[time], "exec_time:" time}' | sort -nr
+
+# Count Row-based Vs. Statement-based statements logged in a specific binlog-file:
+		-- Extract all events:
+		grep -Eci 'INSERT INTO|UPDATE|DELETE FROM' decoded_binlog.txt
+
+		-- Count Row-Based Events:
+		grep -c "^###" decoded_binlog.txt
+
+		-- Count statment-based Events:
+		grep -Eci 'INSERT INTO|UPDATE|DELETE FROM' decoded_binlog.txt
+
+		--  Calculate Percentages:
+		R=$(grep -c "^###" decoded_binlog.txt)
+		S=$(grep -Eci 'INSERT INTO|UPDATE|DELETE FROM' decoded_binlog.txt)
+		TOTAL=$((R + S))
+		echo "Row-based: $((R*100 / TOTAL))% | Statement-based: $((S*100 / TOTAL))%"
+
+		Eg o/p :
+		$echo "Row-based: $((R*100 / TOTAL))% | Statement-based: $((S*100 / TOTAL))%"
+		Row-based: 96% | Statement-based: 3%
