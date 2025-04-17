@@ -33,3 +33,46 @@
 		Eg o/p :
 		$echo "Row-based: $((R*100 / TOTAL))% | Statement-based: $((S*100 / TOTAL))%"
 		Row-based: 96% | Statement-based: 3%
+
+
+# Extract Statements From Binlog Within Time Range:
+	mysqlbinlog --start-datetime="2025-04-15 00:00:00" \
+	            --stop-datetime="2025-04-15 01:00:00" \
+	            --base64-output=DECODE-ROWS --verbose master.004039
+
+# Find the Most Affected Tables
+	 $mysqlbinlog --base64-output=DECODE-ROWS --verbose master.004039 | grep "Table_map" | awk -F'`' '{print $2"."$4}' | sort | uniq -c | sort -nr
+
+
+# Reconstructing SQL statements from RBR[Row-based to Statement based]:
+
+			-- Make sure binlog_format is RBR:
+				MariaDB [(none)]> select @@binlog_format;
+								+-----------------+
+								| @@binlog_format |
+								+-----------------+
+								| ROW             |
+								+-----------------+
+								1 row in set (0.000 sec)
+
+			-- Logical interpretations pseudo-SQL(not actual statements) from the row based events:
+			mysqlbinlog --base64-output=DECODE-ROWS --verbose master.004039 > reconstructed.sql
+
+			-- Turn above to executable SQL: [clone the repo to download the binlog2sql]
+			git clone https://github.com/danfengcao/binlog2sql.git
+		    cd binlog2sql
+		   
+		    -- Install dependencies:
+		    $pip install -r requirements.txt
+
+			    python binlog2sql.py \
+			  -h <hostname> -u <user> -p \
+			  --start-file=binlog.000001 \
+			  --start-datetime="2025-04-15 00:00:00" \
+			  --stop-datetime="2025-04-15 01:00:00"
+
+		This will convert row-based events to real SQL statements (UPDATE/INSERT/DELETE).
+
+		⚠️ Important:
+		You need binlogs + schema access to correctly resolve column names from @1, @2, etc.
+		For multi-row updates/inserts, results may span multiple lines.
