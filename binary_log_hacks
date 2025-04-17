@@ -77,3 +77,5 @@
 	⚠️ Important:
 		You need binlogs + schema access to correctly resolve column names from @1, @2, etc.
 		For multi-row updates/inserts, results may span multiple lines.
+
+`	Ref. https://www.percona.com/blog/binlog2sql-binlog-to-raw-sql-conversion-and-point-in-time-recovery/ 
